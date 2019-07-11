@@ -29,6 +29,10 @@ func CleanPostgresDB(t *testing.T) *sql.DB {
 }
 
 func TestPostgres(t *testing.T) {
+	testWithDB(t, CleanPostgresDB)
+}
+
+func testWithDB(t *testing.T, freshDB func(t *testing.T) *sql.DB) {
 	db := CleanPostgresDB(t)
 	defer db.Close()
 	testEvolution(db, t)
@@ -39,6 +43,11 @@ func TestPostgres(t *testing.T) {
 	db = CleanPostgresDB(t)
 	testFailingMigration(db, t)
 	db.Close()
+
+	db,_ = sql.Open("postgres", "sominvalid uri")
+	if m,err := NewMigrator(db, make([]Migration,0)); err == nil ||m != nil {
+		t.Errorf("Invalid database should throw an error")
+	}
 }
 
 func testEvolution(db *sql.DB, t *testing.T) {
@@ -59,6 +68,13 @@ func testEvolution(db *sql.DB, t *testing.T) {
 	}
 
 	m,err := NewMigrator(db, migrations)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err := m.DryRun(); err != nil {
+		t.Error(err)
+	}
 
 	if len(m.Applied()) != 0 {
 		t.Errorf("At the beginning, there should not be applied migrations")
@@ -66,10 +82,6 @@ func testEvolution(db *sql.DB, t *testing.T) {
 
 	if len(m.Pending()) != len(migrations) {
 		t.Errorf("At the beginning, there should be all migrations pending")
-	}
-	
-	if err != nil {
-		t.Error(err)
 	}
 
 	err = m.Migrate()

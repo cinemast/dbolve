@@ -56,66 +56,62 @@ func (m *Migrator) Pending() []Migration {
 
 //Applied returns a slice of already applied migrations
 func (m *Migrator) Applied() []Migration {
-	migrations,err := readAppliedMigrations(m.db)
-	if err != nil {
-		return make([]Migration,0)
-	}
-	return migrations
+	return readAppliedMigrations(m.db)
 }
 
 //CountApplied returns the number of already applied migrations
 func (m *Migrator) CountApplied() int {
 	row := m.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s;",tableName))
 	count := 0
-	err := row.Scan(&count)
-	if err != nil {
-		return 0
-	}
+	_ = row.Scan(&count)
 	return count
 }
 
 //Migrate run's all missing migrations
 func (m *Migrator) Migrate() error {
+	return m.migrate(false)
+}
+
+//DryRun tries to run the migrations but rollbacks each transaction
+func (m *Migrator) DryRun() error {
+	return m.migrate(true)
+}
+
+func (m *Migrator) migrate(dryRun bool) error {
 	appliedMigrations := m.Applied()
 	if len(appliedMigrations) > len(m.Migrations) {
 		return errors.New("Found more applied migrations than supplied")
 	}
 	for idx,applied := range m.Applied() {
 		if err := verifyMigration(applied, m.Migrations[idx]); err != nil {
-			m.Log.Printf("%s☓ Verification failed (%d) \"%s\" -> %s",logPrefix, idx, applied.Name, err.Error())
+			m.Log.Printf("%s☓ Verification failed (%d) \"%s\" -> %s", logPrefix, idx, applied.Name, err.Error())
 			return err
 		}
 		m.Log.Printf("%s✔  Verified migration (%d) \"%s\"",logPrefix, idx, applied.Name)
 	}
 	for idx,pending := range m.Migrations[len(appliedMigrations):len(m.Migrations)] {
-		if err := applyMigration(m.db, idx+len(appliedMigrations), &pending); err != nil {
-			m.Log.Printf("%s: ☓ Migration failed (%d) \"%s\" -> %s",logPrefix, idx+len(appliedMigrations), pending.Name, err.Error())
+		if err := applyMigration(m.db, idx+len(appliedMigrations), &pending, dryRun); err != nil {
+			m.Log.Printf("%s: ☓ Migration failed (%d) \"%s\" -> %s", logPrefix, idx+len(appliedMigrations), pending.Name, err.Error())
 			return err
 		}
-		m.Log.Printf("%s★  Applied migration (%d) \"%s\"",logPrefix, idx+len(appliedMigrations), pending.Name)
+		m.Log.Printf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
 	}
 	return nil
 }
 
-func readAppliedMigrations(db *sql.DB) ([]Migration,error) {
-	rows, err := db.Query(fmt.Sprintf("SELECT * FROM %s;",tableName))
-	if err != nil {
-		return nil, err
-	}
+func readAppliedMigrations(db *sql.DB) ([]Migration) {
+	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;",tableName))
 	defer rows.Close()
 	migrations := make([]Migration,0)
 	for rows.Next() {
 		migration := Migration{}
-		err := rows.Scan(&migration.idx, &migration.Name, &migration.hash, &migration.Timestamp)	
-		if err != nil {
-			return nil,err
-		}
+		_ = rows.Scan(&migration.idx, &migration.Name, &migration.hash, &migration.Timestamp)	
 		migrations = append(migrations,migration)
 	}
-	return migrations,nil
+	return migrations
 }
 
-func applyMigration(db *sql.DB, idx int, migration *Migration) error {
+func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool) error {
 	tx,err := db.Begin()
 	if err != nil {
 		return errors.New("Could not start transaction: " + err.Error())
@@ -127,7 +123,7 @@ func applyMigration(db *sql.DB, idx int, migration *Migration) error {
 		return fmt.Errorf("Migration (%d) - %s returned an error: %s",idx, migration.Name, err.Error())
 	}
 	_,err = tx.Exec(fmt.Sprintf("INSERT INTO %s (id,name,hash) VALUES (%d,'%s','%s');",tableName, idx, migration.Name, exec.verifier.Hash()))
-	if err != nil {
+	if err != nil || dryRun {
 		tx.Rollback()
 		return err
 	} 
