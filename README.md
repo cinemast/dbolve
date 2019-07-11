@@ -77,7 +77,6 @@ I was missing two features:
   - Allow to list already applied and pending migrations
   - Verification that already applied migrations match the current migration code
 
-  ## TODO
-
+## TODO
   - CI Setup and coverage metrics
-  - Dry run mode
+  - Properly versioned releases
