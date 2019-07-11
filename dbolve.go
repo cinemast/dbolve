@@ -96,7 +96,7 @@ func (m *Migrator) migrate(dryRun bool) error {
 		}
 		m.Log.Printf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
 	}
-	return nil
+ 	return nil
 }
 
 func readAppliedMigrations(db *sql.DB) ([]Migration) {

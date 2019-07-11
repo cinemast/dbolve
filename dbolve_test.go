@@ -6,47 +6,93 @@ import(
 	"fmt"
 	"strings"
 	"database/sql"
+	"os"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func CleanPostgresDB(t *testing.T) *sql.DB {
-	dbhost := "localhost"
-	dbuser := "postgres"
-	dbpass := "postgres"
-	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s?sslmode=disable", dbuser, dbpass, dbhost))
-    if err != nil {
-		t.Error(err)
-        t.Fail()
+type dbCredentials struct {
+	driver string
+	user string
+	password string
+	host string
+	dbname string
+}
+
+func (c *dbCredentials) connectDB(t *testing.T) *sql.DB {
+	var url string 
+	switch c.driver {
+	case "postgres": url = fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=disable", c.driver, c.user, c.password, c.host, c.dbname)
+	case "mysql": url = fmt.Sprintf("%s:%s@tcp(%s)/%s?autocommit=false", c.user, c.password, c.host, c.dbname)
+	case "sqlite3": url = fmt.Sprintf("file:%s", c.dbname)
+	default: t.Fail()
 	}
-	db.Exec("CREATE DATABASE dbolve_test;")
-	db.Close()
-	db, err = sql.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s/dbolve_test?sslmode=disable", dbuser, dbpass, dbhost))
+
+	db, err := sql.Open(c.driver, url)
 	if err != nil {
-        t.Error(err)
-        t.Fail()
+		t.Error(err)
+		t.Fail()
 	}
-	db.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 	return db
 }
 
-func TestPostgres(t *testing.T) {
-	testWithDB(t, CleanPostgresDB)
+func CleanDB(t *testing.T, creds dbCredentials) *sql.DB {
+	
+	switch creds.driver {
+	case "sqlite3":
+		os.Remove(creds.dbname + ".db")
+		return creds.connectDB(t)
+	default:
+		db := creds.connectDB(t)
+		_, err := db.Exec("DROP DATABASE dbolve_test;")
+		if err != nil {
+			t.Error(err)
+			t.Fail()
+		}
+		_, err = db.Exec("CREATE DATABASE dbolve_test;")
+		if err != nil {
+			t.Error(err)
+			t.Fail()
+		}
+		db.Close()
+		creds.dbname = "dbolve_test"
+		db = creds.connectDB(t)
+		return db
+	}
+
+
+	
 }
 
-func testWithDB(t *testing.T, freshDB func(t *testing.T) *sql.DB) {
-	db := CleanPostgresDB(t)
+func TestPostgres(t *testing.T) {
+	testWithDB(t, dbCredentials{driver: "postgres", user: "postgres", password: "postgres", host: "localhost"})
+}
+
+func TestMySQL(t *testing.T) {
+	testWithDB(t, dbCredentials{driver: "mysql", user: "root", password: "mysql", host: "localhost"})
+}
+
+func TestSQLite(t *testing.T) {
+	testWithDB(t, dbCredentials{driver: "sqlite3"})
+}
+
+func testWithDB(t *testing.T, creds dbCredentials) {
+	db := CleanDB(t, creds)
 	defer db.Close()
 	testEvolution(db, t)
 	db.Close()
-	db = CleanPostgresDB(t)
+	db = CleanDB(t, creds)
 	testModifiedMigration(db, t)
 	db.Close()
-	db = CleanPostgresDB(t)
+	db = CleanDB(t, creds)
 	testFailingMigration(db, t)
 	db.Close()
 
-	db,_ = sql.Open("postgres", "sominvalid uri")
-	if m,err := NewMigrator(db, make([]Migration,0)); err == nil ||m != nil {
-		t.Errorf("Invalid database should throw an error")
+	if creds.driver != "sqlite3" {
+		db,_ = sql.Open(creds.driver, "some invalid")
+		if m,err := NewMigrator(db, make([]Migration,0)); err == nil ||m != nil {
+			t.Errorf("Invalid database should throw an error")
+		}
 	}
 }
 
