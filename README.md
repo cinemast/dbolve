@@ -37,23 +37,15 @@ func main() {
 
 	migrations := []dbolve.Migration{
 		dbolve.Migration{
-			Name: "Add acccount table", 
+			Name: "Add acccount table",
 				Code: func(tx dbolve.Transaction) error {
-					return tx.Exec(`CREATE TABLE account(
-						user_id serial PRIMARY KEY,
-						username VARCHAR (50) UNIQUE NOT NULL,
-						password VARCHAR (50) NOT NULL
-					 );`)
+					return tx.Exec(`CREATE TABLE account(user_id serial PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL);`)
 				},
 			},
 		dbolve.Migration{
-		Name: "Add acccount 2 table", 
+		Name: "Add acccount 2 table",
 			Code: func(tx dbolve.Transaction) error {
-				return tx.Exec(`CREATE TABLE account2(
-					user_id serial PRIMARY KEY,
-					username VARCHAR (50) UNIQUE NOT NULL,
-					password VARCHAR (50) NOT NULL
-				 );`)
+				return tx.Exec(`CREATE TABLE account2(user_id serial PRIMARY KEY, username VARCHAR (50) UNIQUE NOT NULL, password VARCHAR (50) NOT NULL);`)
 			},
 		},
 	}
@@ -80,4 +72,3 @@ I was missing two features:
 ## TODO
   - CI Setup and coverage metrics
   - Properly versioned releases
-  - Solve problem about https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html#atomic-ddl-statement-behavior, currently CREATE TABLE cannot be used in a transaction. Before 8.0 it was not atmoic at all.

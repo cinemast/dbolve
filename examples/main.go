@@ -41,8 +41,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	m.Log = log.New(os.Stdout, "", log.LstdFlags)
-	if err := m.Migrate(); err != nil {
+	m.Log = log.New(os.Stdout, "", 0)
+	if err := m.DryRun(); err != nil {
 		panic(err)
 	}
 	fmt.Println("Finished migrations")

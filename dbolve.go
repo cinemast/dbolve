@@ -90,11 +90,16 @@ func (m *Migrator) migrate(dryRun bool) error {
 		m.Log.Printf("%s✔  Verified migration (%d) \"%s\"",logPrefix, idx, applied.Name)
 	}
 	for idx,pending := range m.Migrations[len(appliedMigrations):len(m.Migrations)] {
-		if err := applyMigration(m.db, idx+len(appliedMigrations), &pending, dryRun); err != nil {
+		if dryRun {
+			m.Log.Printf("%sWould apply migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
+		}
+		if err := applyMigration(m.db, idx+len(appliedMigrations), &pending, dryRun, m.Log); err != nil {
 			m.Log.Printf("%s: ☓ Migration failed (%d) \"%s\" -> %s", logPrefix, idx+len(appliedMigrations), pending.Name, err.Error())
 			return err
 		}
-		m.Log.Printf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
+		if !dryRun {
+			m.Log.Printf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
+		}
 	}
  	return nil
 }
@@ -111,12 +116,12 @@ func readAppliedMigrations(db *sql.DB) ([]Migration) {
 	return migrations
 }
 
-func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool) error {
+func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logger *log.Logger) error {
 	tx,err := db.Begin()
 	if err != nil {
 		return errors.New("Could not start transaction: " + err.Error())
 	}
-	exec := &executor{tx, verifier{}}
+	exec := &executor{tx, verifier{}, dryRun, logger}
 	err = migration.Code(exec)
 	if err != nil {
 		tx.Rollback()
@@ -146,15 +151,21 @@ func verifyMigration(applied Migration, pending Migration) error {
 type executor struct {
 	tx *sql.Tx
 	verifier verifier
+	dryrun bool
+	log *log.Logger
 }
 
 func (e *executor) Exec(sql string) error {
-	_, err := e.tx.Exec(sql)
 	e.verifier.Exec(sql)
-	if err != nil {
-		e.tx.Rollback()
-	}
-	return err
+	if !e.dryrun {
+		_, err := e.tx.Exec(sql)
+		if err != nil {
+			e.tx.Rollback()
+		}
+		return err
+	} 
+	e.log.Println("   -> " + sql)
+	return nil
 }
 
 type verifier struct {
