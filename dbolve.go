@@ -189,6 +189,6 @@ func (v *verifier) Exec(sql string) error {
 }
 
 func (v *verifier) Hash() string {
-	sum := sha256.Sum256([]byte(v.buffer.String()))
+	sum := sha256.Sum256(v.buffer.Bytes())
 	return fmt.Sprintf("%x", sum)
 }
