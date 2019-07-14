@@ -1,31 +1,35 @@
 package dbolve
 
-import(
-	_ "github.com/lib/pq"
-	"testing"
-	"fmt"
-	"strings"
+import (
 	"database/sql"
-	"os"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
+	"strings"
+	"testing"
 )
 
 type dbCredentials struct {
-	driver string
-	user string
+	driver   string
+	user     string
 	password string
-	host string
-	dbname string
+	host     string
+	dbname   string
 }
 
 func (c *dbCredentials) connectDB(t *testing.T) *sql.DB {
-	var url string 
+	var url string
 	switch c.driver {
-	case "postgres": url = fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=disable", c.driver, c.user, c.password, c.host, c.dbname)
-	case "mysql": url = fmt.Sprintf("%s:%s@tcp(%s)/%s?autocommit=false", c.user, c.password, c.host, c.dbname)
-	case "sqlite3": url = fmt.Sprintf("file:%s", c.dbname)
-	default: t.Fail()
+	case "postgres":
+		url = fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=disable", c.driver, c.user, c.password, c.host, c.dbname)
+	case "mysql":
+		url = fmt.Sprintf("%s:%s@tcp(%s)/%s?autocommit=false", c.user, c.password, c.host, c.dbname)
+	case "sqlite3":
+		url = fmt.Sprintf("file:%s", c.dbname)
+	default:
+		t.Fail()
 	}
 
 	db, err := sql.Open(c.driver, url)
@@ -37,14 +41,14 @@ func (c *dbCredentials) connectDB(t *testing.T) *sql.DB {
 }
 
 func CleanDB(t *testing.T, creds dbCredentials) *sql.DB {
-	
+
 	switch creds.driver {
 	case "sqlite3":
 		os.Remove(creds.dbname + ".db")
 		return creds.connectDB(t)
 	default:
 		db := creds.connectDB(t)
-		_, err := db.Exec("DROP DATABASE dbolve_test;")
+		_, err := db.Exec("DROP DATABASE IF EXISTS dbolve_test;")
 		if err != nil {
 			t.Error(err)
 			t.Fail()
@@ -59,9 +63,6 @@ func CleanDB(t *testing.T, creds dbCredentials) *sql.DB {
 		db = creds.connectDB(t)
 		return db
 	}
-
-
-	
 }
 
 func TestPostgres(t *testing.T) {
@@ -89,8 +90,8 @@ func testWithDB(t *testing.T, creds dbCredentials) {
 	db.Close()
 
 	if creds.driver != "sqlite3" {
-		db,_ = sql.Open(creds.driver, "some invalid")
-		if m,err := NewMigrator(db, make([]Migration,0)); err == nil ||m != nil {
+		db, _ = sql.Open(creds.driver, "some invalid")
+		if m, err := NewMigrator(db, make([]Migration, 0)); err == nil || m != nil {
 			t.Errorf("Invalid database should throw an error")
 		}
 	}
@@ -99,7 +100,7 @@ func testWithDB(t *testing.T, creds dbCredentials) {
 func testEvolution(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
 		Migration{
-			Name: "First migration", 
+			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
 					user_id serial PRIMARY KEY,
@@ -113,7 +114,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		},
 	}
 
-	m,err := NewMigrator(db, migrations)
+	m, err := NewMigrator(db, migrations)
 	if err != nil {
 		t.Error(err)
 	}
@@ -144,17 +145,17 @@ func testEvolution(db *sql.DB, t *testing.T) {
 	}
 
 	migrations = append(migrations, Migration{
-		Name: "Second migration", 
-			Code: func(tx Transaction) error {
-				return tx.Exec(`CREATE TABLE account2(
+		Name: "Second migration",
+		Code: func(tx Transaction) error {
+			return tx.Exec(`CREATE TABLE account2(
 					user_id serial PRIMARY KEY,
 					username VARCHAR (50) UNIQUE NOT NULL,
 					password VARCHAR (50) NOT NULL
 				 );`)
-			},
+		},
 	})
 
-	m,err = NewMigrator(db, migrations)
+	m, err = NewMigrator(db, migrations)
 	if len(m.Applied()) != len(migrations)-1 {
 		t.Errorf("Old migratinos should be applied")
 	}
@@ -176,7 +177,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		t.Errorf("At migration, there should be no pending migrations")
 	}
 
-	m,err = NewMigrator(db, make([]Migration,0))
+	m, err = NewMigrator(db, make([]Migration, 0))
 	if err := m.Migrate(); err.Error() != "Found more applied migrations than supplied" {
 		t.Errorf("Should not accept unknown migrations")
 	}
@@ -185,7 +186,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 func testModifiedMigration(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
 		Migration{
-			Name: "First migration", 
+			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
 					user_id serial PRIMARY KEY,
@@ -198,7 +199,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 			},
 		},
 	}
-	m,_ := NewMigrator(db, migrations)
+	m, _ := NewMigrator(db, migrations)
 	if err := m.Migrate(); err != nil {
 		t.Error(err)
 	}
@@ -208,7 +209,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 	}
 
 	migrations[0].Name = "Fist migration"
-	m,_ = NewMigrator(db, migrations)
+	m, _ = NewMigrator(db, migrations)
 	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration \"%s\" names changed: current:\"%s\" != applied:\"%s\"", "Fist migration", "Fist migration", "First migration") {
 		t.Error("name change should have been detected")
 	}
@@ -234,13 +235,13 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 func testFailingMigration(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
 		Migration{
-			Name: "First migration", 
+			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE WITH SYNTAX ERROR);`)
 			},
 		},
 	}
-	m,_ := NewMigrator(db, migrations)
+	m, _ := NewMigrator(db, migrations)
 	if err := m.Migrate(); strings.Contains(err.Error(), "Migration (0) - \"First migration\" returned an error:") {
 		t.Error("Error not thrown on invalid migration code")
 	}
@@ -248,5 +249,3 @@ func testFailingMigration(db *sql.DB, t *testing.T) {
 		t.Error("No migrations should have been applied")
 	}
 }
-
-//Test failed migrator new

@@ -1,0 +1,24 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12
+      - image: postgres:alpine
+        environment:
+          POSTGRES_PASSWORD: postgres
+      - image: mysql:8
+        environment:
+          MYSQL_ROOT_PASSWORD: mysql
+    working_directory: /go/src/github.com/cinemast/dbolve
+    steps:
+      - checkout
+      - run:
+          name: install dockerize
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.6.1
+      - run: go get -v -t -d ./...
+      - run: dockerize -wait tcp://localhost:3306 -timeout 1m
+      - run: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run: go test -v -coverprofile="coverage.txt" -covermode=atomic ./...
+      - run: bash <(curl -s https://codecov.io/bash)
