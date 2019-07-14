@@ -16,7 +16,7 @@ func main() {
 	}
 
 	migrations := []dbolve.Migration{
-		dbolve.Migration{
+		{
 			Name: "Add acccount table",
 			Code: func(tx dbolve.Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
@@ -26,7 +26,7 @@ func main() {
 					 );`)
 			},
 		},
-		dbolve.Migration{
+		{
 			Name: "Add acccount 2 table",
 			Code: func(tx dbolve.Transaction) error {
 				return tx.Exec(`CREATE TABLE account2(

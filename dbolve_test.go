@@ -99,7 +99,7 @@ func testWithDB(t *testing.T, creds dbCredentials) {
 
 func testEvolution(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
-		Migration{
+		{
 			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
@@ -185,7 +185,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 
 func testModifiedMigration(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
-		Migration{
+		{
 			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
@@ -234,7 +234,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 
 func testFailingMigration(db *sql.DB, t *testing.T) {
 	migrations := []Migration{
-		Migration{
+		{
 			Name: "First migration",
 			Code: func(tx Transaction) error {
 				return tx.Exec(`CREATE TABLE WITH SYNTAX ERROR);`)
