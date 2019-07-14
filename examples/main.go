@@ -3,10 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/cinemast/dbolve"
-	_ "github.com/lib/pq"
 	"log"
 	"os"
+
+	"github.com/cinemast/dbolve"
+	_ "github.com/lib/pq"
 )
 
 func main() {

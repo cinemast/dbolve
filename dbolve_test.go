@@ -3,12 +3,13 @@ package dbolve
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"strings"
 	"testing"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type dbCredentials struct {
@@ -79,15 +80,15 @@ func TestSQLite(t *testing.T) {
 
 func testWithDB(t *testing.T, creds dbCredentials) {
 	db := CleanDB(t, creds)
-	defer db.Close()
+	_ = db.Close()
 	testEvolution(db, t)
-	db.Close()
+	_ = db.Close()
 	db = CleanDB(t, creds)
 	testModifiedMigration(db, t)
-	db.Close()
+	_ = db.Close()
 	db = CleanDB(t, creds)
 	testFailingMigration(db, t)
-	db.Close()
+	_ = db.Close()
 
 	if creds.driver != "sqlite3" {
 		db, _ = sql.Open(creds.driver, "some invalid")

@@ -15,7 +15,7 @@ const (
 	tableName = "dbolve_migrations"
 )
 
-//Migration struct
+// Migration struct
 type Migration struct {
 	Name      string
 	Code      func(t Transaction) error
@@ -24,19 +24,19 @@ type Migration struct {
 	hash      string
 }
 
-//Migrator type
+// Migrator type
 type Migrator struct {
 	db         *sql.DB
 	Migrations []Migration
 	Log        *log.Logger
 }
 
-//Transaction exposes allowed database operations for migrations
+// Transaction exposes allowed database operations for migrations
 type Transaction interface {
 	Exec(sql string) error
 }
 
-//NewMigrator creates a new instance of Migrator
+// NewMigrator creates a new instance of Migrator
 func NewMigrator(db *sql.DB, migrations []Migration) (*Migrator, error) {
 	if db == nil {
 		return nil, errors.New("Received a nil db parameter")
@@ -52,17 +52,17 @@ func NewMigrator(db *sql.DB, migrations []Migration) (*Migrator, error) {
 	return &Migrator{db, migrations, log.New(ioutil.Discard, logPrefix, log.Ldate)}, nil
 }
 
-//Pending returns a slice of not yet applied migrations
+// Pending returns a slice of not yet applied migrations
 func (m *Migrator) Pending() []Migration {
 	return m.Migrations[m.CountApplied():len(m.Migrations)]
 }
 
-//Applied returns a slice of already applied migrations
+// Applied returns a slice of already applied migrations
 func (m *Migrator) Applied() []Migration {
 	return readAppliedMigrations(m.db)
 }
 
-//CountApplied returns the number of already applied migrations
+// CountApplied returns the number of already applied migrations
 func (m *Migrator) CountApplied() int {
 	row := m.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s;", tableName))
 	count := 0
@@ -70,12 +70,12 @@ func (m *Migrator) CountApplied() int {
 	return count
 }
 
-//Migrate run's all missing migrations
+// Migrate run's all missing migrations
 func (m *Migrator) Migrate() error {
 	return m.migrate(false)
 }
 
-//DryRun tries to run the migrations but rollbacks each transaction
+// DryRun tries to run the migrations but rollbacks each transaction
 func (m *Migrator) DryRun() error {
 	return m.migrate(true)
 }
