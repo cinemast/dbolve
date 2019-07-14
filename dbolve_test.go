@@ -80,7 +80,6 @@ func TestSQLite(t *testing.T) {
 
 func testWithDB(t *testing.T, creds dbCredentials) {
 	db := CleanDB(t, creds)
-	_ = db.Close()
 	testEvolution(db, t)
 	_ = db.Close()
 	db = CleanDB(t, creds)
