@@ -1,4 +1,7 @@
-**THIS IS A WORK IN PROGRES**
+[![CircleCI](https://circleci.com/gh/cinemast/dbolve.svg?style=svg)](https://circleci.com/gh/cinemast/dbolve)
+[![codecov](https://codecov.io/gh/cinemast/dbolve/branch/master/graph/badge.svg)](https://codecov.io/gh/cinemast/dbolve)
+[![GoDoc](https://godoc.org/github.com/cinemast/dbolve/go?status.svg)](https://godoc.org/github.com/cinemast/dbolve)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cinemast/dbolve)](https://goreportcard.com/report/github.com/cinemast/dbolve)
 
 # dbolve
 
