@@ -127,15 +127,21 @@ func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logg
 	exec := &executor{tx, verifier{}, dryRun, logger}
 	err = migration.Code(exec)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return fmt.Errorf("Migration (%d) - %s returned an error: %s", idx, migration.Name, err.Error())
 	}
 	_, err = tx.Exec(fmt.Sprintf("INSERT INTO %s (id,name,hash) VALUES (%d,'%s','%s');", tableName, idx, migration.Name, exec.verifier.Hash()))
 	if err != nil || dryRun {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -144,7 +150,7 @@ func verifyMigration(applied Migration, pending Migration) error {
 		return fmt.Errorf("Migration \"%s\" names changed: current:\"%s\" != applied:\"%s\"", pending.Name, pending.Name, applied.Name)
 	}
 	v := &verifier{}
-	pending.Code(v)
+	_ = pending.Code(v)
 	if v.Hash() != applied.hash {
 		return fmt.Errorf("Migration \"%s\" hash changed", pending.Name)
 	}
@@ -159,11 +165,13 @@ type executor struct {
 }
 
 func (e *executor) Exec(sql string) error {
-	e.verifier.Exec(sql)
+	_ = e.verifier.Exec(sql)
 	if !e.dryrun {
 		_, err := e.tx.Exec(sql)
 		if err != nil {
-			e.tx.Rollback()
+			if err := e.tx.Rollback(); err != nil {
+				return err
+			}
 		}
 		return err
 	}

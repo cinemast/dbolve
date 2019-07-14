@@ -155,7 +155,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		},
 	})
 
-	m, err = NewMigrator(db, migrations)
+	m, _ = NewMigrator(db, migrations)
 	if len(m.Applied()) != len(migrations)-1 {
 		t.Errorf("Old migratinos should be applied")
 	}
@@ -177,7 +177,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		t.Errorf("At migration, there should be no pending migrations")
 	}
 
-	m, err = NewMigrator(db, make([]Migration, 0))
+	m, _ = NewMigrator(db, make([]Migration, 0))
 	if err := m.Migrate(); err.Error() != "Found more applied migrations than supplied" {
 		t.Errorf("Should not accept unknown migrations")
 	}
