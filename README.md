@@ -71,7 +71,3 @@ Heavily inspired by [lopezator/migrator](https://github.com/lopezator/migrator).
 I was missing two features:
   - Allow to list already applied and pending migrations
   - Verification that already applied migrations match the current migration code
-
-## TODO
-  - CI Setup and coverage metrics
-  - Properly versioned releases
