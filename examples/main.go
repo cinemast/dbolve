@@ -18,7 +18,7 @@ func main() {
 
 	migrations := []dbolve.Migration{
 		{
-			Name: "Add acccount table",
+			Name: "Add account table",
 			Code: func(tx dbolve.Transaction) error {
 				return tx.Exec(`CREATE TABLE account(
 						user_id serial PRIMARY KEY,
@@ -28,7 +28,7 @@ func main() {
 			},
 		},
 		{
-			Name: "Add acccount 2 table",
+			Name: "Add account 2 table",
 			Code: func(tx dbolve.Transaction) error {
 				return tx.Exec(`CREATE TABLE account2(
 					user_id serial PRIMARY KEY,
