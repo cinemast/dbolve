@@ -127,8 +127,8 @@ func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logg
 	exec := &executor{tx, verifier{}, dryRun, logger}
 	err = migration.Code(exec)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return err
+		if err2 := tx.Rollback(); err2 != nil {
+			return fmt.Errorf("%w; %s", err, err2.Error())
 		}
 		return fmt.Errorf("Migration (%d) - %s returned an error: %s", idx, migration.Name, err.Error())
 	}
