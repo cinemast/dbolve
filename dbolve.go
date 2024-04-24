@@ -147,12 +147,12 @@ func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logg
 
 func verifyMigration(applied Migration, pending Migration) error {
 	if applied.Name != pending.Name {
-		return fmt.Errorf("Migration \"%s\" names changed: current:\"%s\" != applied:\"%s\"", pending.Name, pending.Name, applied.Name)
+		return fmt.Errorf("Migration id %d \"%s\" names changed: current:\"%s\" != applied:\"%s\"", pending.idx, pending.Name, pending.Name, applied.Name)
 	}
 	v := &verifier{}
 	_ = pending.Code(v)
 	if v.Hash() != applied.hash {
-		return fmt.Errorf("Migration \"%s\" hash changed", pending.Name)
+		return fmt.Errorf("Migration id %d \"%s\" hash changed %s expected %s actual", pending.idx, pending.Name, v.Hash(), applied.hash)
 	}
 	return nil
 }
