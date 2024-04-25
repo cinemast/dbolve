@@ -210,7 +210,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 
 	migrations[0].Name = "Fist migration"
 	m, _ = NewMigrator(db, migrations)
-	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration \"%s\" names changed: current:\"%s\" != applied:\"%s\"", "Fist migration", "Fist migration", "First migration") {
+	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration id 0 \"%s\" names changed: current:\"%s\" != applied:\"%s\"", "Fist migration", "Fist migration", "First migration") {
 		t.Error("name change should have been detected")
 	}
 
@@ -223,7 +223,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 		 );`)
 	}
 
-	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration \"%s\" hash changed", "First migration") {
+	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration id 0 \"%s\" hash changed 6897e2a8451838d000afe849c4f1b7da4a5dc485c768ec128d96e9cf47d6041d expected 8cc30dbeae1a04ad30a7268fa5f00f673b74841caed544ef4f1be5d3e2163b99 actual", "First migration") {
 		t.Error("Name hash change should have been detected")
 	}
 
