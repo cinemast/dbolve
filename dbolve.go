@@ -6,8 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"log/slog"
 )
 
 const (
@@ -28,7 +27,7 @@ type Migration struct {
 type Migrator struct {
 	db         *sql.DB
 	Migrations []Migration
-	Log        *log.Logger
+	Log        *slog.Logger
 }
 
 // Transaction exposes allowed database operations for migrations
@@ -37,7 +36,7 @@ type Transaction interface {
 }
 
 // NewMigrator creates a new instance of Migrator
-func NewMigrator(db *sql.DB, migrations []Migration) (*Migrator, error) {
+func NewMigrator(db *sql.DB, migrations []Migration, logger *slog.Logger) (*Migrator, error) {
 	if db == nil {
 		return nil, errors.New("Received a nil db parameter")
 	}
@@ -49,7 +48,7 @@ func NewMigrator(db *sql.DB, migrations []Migration) (*Migrator, error) {
 	if err != nil {
 		return nil, errors.New(logPrefix + "Could not create migration table: " + err.Error())
 	}
-	return &Migrator{db, migrations, log.New(ioutil.Discard, logPrefix, log.Ldate)}, nil
+	return &Migrator{db, migrations, logger}, nil
 }
 
 // Pending returns a slice of not yet applied migrations
@@ -80,6 +79,21 @@ func (m *Migrator) DryRun() error {
 	return m.migrate(true)
 }
 
+func (m *Migrator) Verify() error {
+	appliedMigrations := m.Applied()
+	if len(appliedMigrations) > len(m.Migrations) {
+		return fmt.Errorf("found more applied migrations than supplied, found: %d, applied: %d", len(m.Migrations), len(appliedMigrations))
+	}
+	for idx, applied := range m.Applied() {
+		if err := verifyMigration(applied, m.Migrations[idx]); err != nil {
+			m.Log.Error(fmt.Sprintf("%s☓ Verification failed (%d) \"%s\" -> %s", logPrefix, idx, applied.Name, err.Error()))
+			return err
+		}
+		m.Log.Debug(fmt.Sprintf("%s✔  Verified migration (%d) \"%s\"", logPrefix, idx, applied.Name))
+	}
+	return nil
+}
+
 func (m *Migrator) migrate(dryRun bool) error {
 	appliedMigrations := m.Applied()
 	if len(appliedMigrations) > len(m.Migrations) {
@@ -87,21 +101,21 @@ func (m *Migrator) migrate(dryRun bool) error {
 	}
 	for idx, applied := range m.Applied() {
 		if err := verifyMigration(applied, m.Migrations[idx]); err != nil {
-			m.Log.Printf("%s☓ Verification failed (%d) \"%s\" -> %s", logPrefix, idx, applied.Name, err.Error())
+			m.Log.Error(fmt.Sprintf("%s☓ Verification failed (%d) \"%s\" -> %s", logPrefix, idx, applied.Name, err.Error()))
 			return err
 		}
-		m.Log.Printf("%s✔  Verified migration (%d) \"%s\"", logPrefix, idx, applied.Name)
+		m.Log.Debug(fmt.Sprintf("%s✔  Verified migration (%d) \"%s\"", logPrefix, idx, applied.Name))
 	}
 	for idx, pending := range m.Migrations[len(appliedMigrations):len(m.Migrations)] {
 		if dryRun {
-			m.Log.Printf("%sWould apply migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
+			m.Log.Info(fmt.Sprintf("%sWould apply migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name))
 		}
 		if err := applyMigration(m.db, idx+len(appliedMigrations), &pending, dryRun, m.Log); err != nil {
-			m.Log.Printf("%s: ☓ Migration failed (%d) \"%s\" -> %s", logPrefix, idx+len(appliedMigrations), pending.Name, err.Error())
+			m.Log.Error(fmt.Sprintf("%s: ☓ Migration failed (%d) \"%s\" -> %s", logPrefix, idx+len(appliedMigrations), pending.Name, err.Error()))
 			return err
 		}
 		if !dryRun {
-			m.Log.Printf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name)
+			m.Log.Info(fmt.Sprintf("%s★  Applied migration (%d) \"%s\"", logPrefix, idx+len(appliedMigrations), pending.Name))
 		}
 	}
 	return nil
@@ -119,7 +133,7 @@ func readAppliedMigrations(db *sql.DB) []Migration {
 	return migrations
 }
 
-func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logger *log.Logger) error {
+func applyMigration(db *sql.DB, idx int, migration *Migration, dryRun bool, logger *slog.Logger) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return errors.New("Could not start transaction: " + err.Error())
@@ -161,7 +175,7 @@ type executor struct {
 	tx       *sql.Tx
 	verifier verifier
 	dryrun   bool
-	log      *log.Logger
+	log      *slog.Logger
 }
 
 func (e *executor) Exec(sql string) error {
@@ -175,7 +189,7 @@ func (e *executor) Exec(sql string) error {
 		}
 		return err
 	}
-	e.log.Println("   -> " + sql)
+	e.log.Debug("   -> " + sql)
 	return nil
 }
 
