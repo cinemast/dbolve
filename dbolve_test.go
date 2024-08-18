@@ -3,6 +3,7 @@ package dbolve
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -91,7 +92,7 @@ func testWithDB(t *testing.T, creds dbCredentials) {
 
 	if creds.driver != "sqlite3" {
 		db, _ = sql.Open(creds.driver, "some invalid")
-		if m, err := NewMigrator(db, make([]Migration, 0)); err == nil || m != nil {
+		if m, err := NewMigrator(db, make([]Migration, 0), slog.Default()); err == nil || m != nil {
 			t.Errorf("Invalid database should throw an error")
 		}
 	}
@@ -114,7 +115,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		},
 	}
 
-	m, err := NewMigrator(db, migrations)
+	m, err := NewMigrator(db, migrations, slog.Default())
 	if err != nil {
 		t.Error(err)
 	}
@@ -155,7 +156,7 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		},
 	})
 
-	m, _ = NewMigrator(db, migrations)
+	m, _ = NewMigrator(db, migrations, slog.Default())
 	if len(m.Applied()) != len(migrations)-1 {
 		t.Errorf("Old migratinos should be applied")
 	}
@@ -177,8 +178,8 @@ func testEvolution(db *sql.DB, t *testing.T) {
 		t.Errorf("At migration, there should be no pending migrations")
 	}
 
-	m, _ = NewMigrator(db, make([]Migration, 0))
-	if err := m.Migrate(); err.Error() != "Found more applied migrations than supplied" {
+	m, _ = NewMigrator(db, make([]Migration, 0), slog.Default())
+	if err := m.Migrate(); err.Error() != "found more applied migrations than supplied" {
 		t.Errorf("Should not accept unknown migrations")
 	}
 }
@@ -199,7 +200,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 			},
 		},
 	}
-	m, _ := NewMigrator(db, migrations)
+	m, _ := NewMigrator(db, migrations, slog.Default())
 	if err := m.Migrate(); err != nil {
 		t.Error(err)
 	}
@@ -209,8 +210,8 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 	}
 
 	migrations[0].Name = "Fist migration"
-	m, _ = NewMigrator(db, migrations)
-	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration id 0 \"%s\" names changed: current:\"%s\" != applied:\"%s\"", "Fist migration", "Fist migration", "First migration") {
+	m, _ = NewMigrator(db, migrations, slog.Default())
+	if err := m.Migrate(); err.Error() != fmt.Sprintf("migration id 0 \"%s\" names changed: current:\"%s\" != applied:\"%s\"", "Fist migration", "Fist migration", "First migration") {
 		t.Error("name change should have been detected")
 	}
 
@@ -223,7 +224,7 @@ func testModifiedMigration(db *sql.DB, t *testing.T) {
 		 );`)
 	}
 
-	if err := m.Migrate(); err.Error() != fmt.Sprintf("Migration id 0 \"%s\" hash changed 6897e2a8451838d000afe849c4f1b7da4a5dc485c768ec128d96e9cf47d6041d expected 8cc30dbeae1a04ad30a7268fa5f00f673b74841caed544ef4f1be5d3e2163b99 actual", "First migration") {
+	if err := m.Migrate(); err.Error() != fmt.Sprintf("migration id 0 \"%s\" hash changed 6897e2a8451838d000afe849c4f1b7da4a5dc485c768ec128d96e9cf47d6041d expected 8cc30dbeae1a04ad30a7268fa5f00f673b74841caed544ef4f1be5d3e2163b99 actual", "First migration") {
 		t.Error("Name hash change should have been detected")
 	}
 
@@ -241,7 +242,7 @@ func testFailingMigration(db *sql.DB, t *testing.T) {
 			},
 		},
 	}
-	m, _ := NewMigrator(db, migrations)
+	m, _ := NewMigrator(db, migrations, slog.Default())
 	if err := m.Migrate(); strings.Contains(err.Error(), "Migration (0) - \"First migration\" returned an error:") {
 		t.Error("Error not thrown on invalid migration code")
 	}

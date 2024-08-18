@@ -2,14 +2,13 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.16
+      - image: cimg/go:1.22.6
       - image: postgres:alpine
         environment:
           POSTGRES_PASSWORD: postgres
       - image: mysql:8
         environment:
           MYSQL_ROOT_PASSWORD: mysql
-    working_directory: /go/src/github.com/cinemast/dbolve
     steps:
       - checkout
       - run:

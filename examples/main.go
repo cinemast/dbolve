@@ -3,11 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"os"
-
 	"github.com/cinemast/dbolve"
 	_ "github.com/lib/pq"
+	"log/slog"
 )
 
 func main() {
@@ -38,11 +36,10 @@ func main() {
 			},
 		},
 	}
-	m, err := dbolve.NewMigrator(db, migrations)
+	m, err := dbolve.NewMigrator(db, migrations, slog.Default())
 	if err != nil {
 		panic(err)
 	}
-	m.Log = log.New(os.Stdout, "", 0)
 	if err := m.DryRun(); err != nil {
 		panic(err)
 	}
