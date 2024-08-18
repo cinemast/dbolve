@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: cimg/golang:1.21
+      - image: cimg/go:1.22.6
       - image: postgres:alpine
         environment:
           POSTGRES_PASSWORD: postgres
