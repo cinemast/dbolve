@@ -9,7 +9,6 @@ jobs:
       - image: mysql:8
         environment:
           MYSQL_ROOT_PASSWORD: mysql
-    working_directory: /go/src/github.com/cinemast/dbolve
     steps:
       - checkout
       - run:
