@@ -122,7 +122,7 @@ func (m *Migrator) migrate(dryRun bool) error {
 }
 
 func readAppliedMigrations(db *sql.DB) []Migration {
-	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s;", tableName))
+	rows, _ := db.Query(fmt.Sprintf("SELECT * FROM %s ORDER BY id ASC;", tableName))
 	defer rows.Close()
 	migrations := make([]Migration, 0)
 	for rows.Next() {
